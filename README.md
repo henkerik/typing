@@ -35,12 +35,8 @@ The following files and directories might be of special interest:
 | src/MF/Languages/PHP/AG/Flow.ag        | Implements the conversion of an AST to a flow graph                   |
 | src/MF/Languages/PHP/AG/Typing.ag      | Implements the constraint generation, the transfer function and       |
 |                                        | specifies an instance of the monotone framework                       |
-| src/MF/Languages/PHP/AG/Checking.ag    | Implements the expected constraint generation and generates warnings  |
-|                                        | when the expected constraints don't match the types found by running  |
-|                                        | the work-list algorithm.                                              |
-| src/MF/Language/While/                 | Contains the implementation of the While language and several smaller |
-|                                        | analyses. Of these analyses, the detection of sign analysis is inter- |
-|                                        | procedural. The While AST is currently implemented using a GADT.      |
+| src/MF/Languages/PHP/AG/Checking.ag    | Implements the expected constraint generation and generates warnings when the expected constraints don't match the types found by running the work-list algorithm.|
+| src/MF/Language/While/                 | Contains the implementation of the While language and several smaller analyses. Of these analyses, the detection of sign analysis is inter-procedural. The While AST is currently implemented using a GADT.|
 
 
 (*) : Currently these analyses additional analyses don't compile due to recent changes in the Flowable class
