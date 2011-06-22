@@ -1,0 +1,144 @@
+imports
+{
+import Data.IntMap as IM
+import CCO.Component
+
+}
+
+-------------------------------------------------------------------------------
+-- Simplify the AST
+-------------------------------------------------------------------------------
+
+attr Node OptionalString ParamList
+    syn simplified :: SELF
+
+sem Node
+    | DQContent
+        lhs.simplified = String @value.value
+
+
+attr OptionalString
+    syn value :: {String}
+
+sem OptionalString
+    | Some
+        lhs.value = @value
+    | None 
+        lhs.value = ""
+        
+-------------------------------------------------------------------------------
+-- Remove FunctionCalls 
+-------------------------------------------------------------------------------
+
+attr Node OptionalString ParamList
+    syn removed :: SELF
+
+sem Node 
+    | Expr 
+        lhs.removed = case @e.copy of 
+                          (Assign rv (FunctionCall (FunctionName name) params)) -> SimplifiedFunctionCall name params $ Just rv
+                          (FunctionCall (FunctionName name) params)             -> SimplifiedFunctionCall name params Nothing
+                          copy                                                  -> Expr copy
+        
+
+
+-------------------------------------------------------------------------------
+-- Exstract functions
+-------------------------------------------------------------------------------
+
+-- Call mapping
+attr Node ParamList
+    syn callMapping use {`IM.union`} {IM.empty} :: {IntMap Node}
+
+sem Node
+    | FunctionCall
+        lhs.callMapping = IM.singleton @label @copy        
+
+
+-- Function exstraction
+attr Node OptionalString ParamList
+    syn exstractFunctions :: SELF
+
+sem Node
+    | Expr
+        lhs.exstractFunctions = exstractFunctions (Expr @e.exstractFunctions) @e.callMapping
+    | Return
+        lhs.exstractFunctions = exstractFunctions (Return @e.exstractFunctions) @e.callMapping        
+    | While
+        lhs.exstractFunctions = exstractFunctions (While @c.exstractFunctions @s.exstractFunctions) @c.callMapping
+    | SimplifiedFunctionCall
+        lhs.exstractFunctions = exstractFunctions (SimplifiedFunctionCall @name @params.exstractFunctions @result) @params.callMapping
+    | FunctionCall 
+        lhs.exstractFunctions = buildVariable @label
+    
+                       
+-------------------------------------------------------------------------------
+-- Exstract parameters
+-------------------------------------------------------------------------------
+
+-- Param mapping
+attr Node OptionalString ParamList
+    syn paramMapping use {`IM.union`} {IM.empty} :: {IntMap Node}
+
+sem Node
+    | Param
+        lhs.paramMapping = IM.singleton @label @e.copy
+
+attr Node OptionalString ParamList
+    syn exstractParameters :: SELF
+
+sem Node
+    | SimplifiedFunctionCall
+        lhs.exstractParameters = exstractParameters @copy @params.paramMapping
+
+    
+
+{
+        
+
+buildVariable label = Variable $ Simple $ "#" ++ show label 
+
+-- | Generic function to outline a node based on a mapping
+-- outline :: (Label -> Node -> Node) -> Node -> IntMap Node -> Node
+exstract build update node mapping = sequence $ buildSequence ++ [update node mapping]
+    where
+        buildSequence = IM.elems . IM.mapWithKey build $ mapping
+        
+-- | Outlines function calls, every function call is moved in front of the expression and replaced by a variable. The function calls itself are placed just before the 
+-- | expression
+exstractFunctions = exstract build update
+    where
+        build label (FunctionCall (FunctionName name) params) = SimplifiedFunctionCall name params $ Just (buildVariable label)
+        update = const
+        
+            
+-- | Simplifies a function call        
+exstractParameters node mapping = exstract build update node filtered
+    where
+        build label expr = Expr $ Assign (buildVariable label) expr
+        filtered = IM.filter (not . isVariable) mapping 
+        
+        isVariable :: Node -> Bool
+        isVariable (Variable _) = True
+        isVariable n            = False
+        
+        update (SimplifiedFunctionCall name params result) foo = SimplifiedFunctionCall name (IM.elems . IM.mapWithKey buildParam $ mapping) result
+        
+        buildParam label expr | isVariable expr = Param expr
+                              | otherwise       = Param $ buildVariable label
+        
+        
+
+simplify node = let a = simplified_Syn_Node . execute $ node
+                    b = removed_Syn_Node . execute $ a
+                    c = fixPoint (exstractFunctions_Syn_Node . execute) $ b
+                    d = exstractParameters_Syn_Node . execute $ c
+                    
+                in d -- . (removed_Syn_Node . execute) -- . (fixPoint (exstractFunctions_Syn_Node . execute)) . (simplified_Syn_Node . execute)
+
+
+simplifier :: Component Node Node
+simplifier = component $ return . simplify
+
+
+}

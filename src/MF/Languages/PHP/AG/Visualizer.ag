@@ -1,0 +1,105 @@
+imports
+{
+import Data.Graph.Inductive hiding (graphviz', Node, empty, nodes)
+import Data.Graph.Inductive.Tree
+}
+
+-------------------------------------------------------------------------------
+-- Visualize the AST
+-------------------------------------------------------------------------------
+
+attr Node
+    syn nodeList use {++} {[]}:: {[LNode String]}
+    syn edgeList use {++} {[]}:: {[UEdge]}
+
+sem Node
+    | FunctionDecl
+        loc.label = @loc.ln 
+        +nodeList = (++) [(@ln, "function " ++ @name)]
+        +edgeList = (++) [(@ln, @stmt.label, ())]
+    
+    | SimplifiedFunctionCall
+        loc.label = @loc.lc
+        +nodeList = (++) [(@lc, @name ++ "() [lb: " ++ show @lb ++ ", lc: " ++ show @lc ++ ", lr: " ++ show @lr ++ ", la: " ++ show @la ++ "]")]
+
+    | Sequence 
+        +nodeList = (++) [(@label, ";")]
+        +edgeList = (++) [(@label, @f.label, ()), (@label, @s.label, ())]
+               
+    | Assign
+        lhs.nodeList = [(@label, "="), (@rv.label, render @rv.pp)] ++ @e.nodeList
+        lhs.edgeList = [(@label, @rv.label, ()), (@label, @e.label, ())] ++ @e.edgeList
+    
+    | Expr 
+        +nodeList = (++) [(@label, "expr")]
+        +edgeList = (++) [(@label, @e.label, ())]
+    
+    | Expect
+        lhs.nodeList = [(@label, "expect: " ++ render @expr.pp ++ " == " ++ show @ty)]
+               
+    | Skip
+        +nodeList = (++) [(@label, "[skip]")]
+        
+    | If 
+        +nodeList = (++) [(@label, "if")]
+        +edgeList = (++) [(@label, @c.label, ()), (@label, @l.label, ()), (@label, @r.label, ())]
+        
+    | While
+        +nodeList = (++) [(@label, "while")]
+        +edgeList = (++) [(@label, @c.label, ()), (@label, @s.label, ())]
+        
+    | Return 
+        +nodeList = (++) [(@label, "return")]
+        +edgeList = (++) [(@label, @e.label, ())]
+    
+    | Variable 
+        +nodeList = (++) [(@label, render @loc.pp)]
+
+    | LTrue
+        +nodeList = (++) [(@label, render @loc.pp)]
+
+    | LFalse
+        +nodeList = (++) [(@label, render @loc.pp)]  
+        
+    | Deci
+        +nodeList = (++) [(@label, show @value)]
+    
+        
+    | Plus IsEqual
+        +edgeList = (++) [(@label, @l.label, ()), (@label, @r.label, ())]
+    | Plus 
+        +nodeList = (++) [(@label, "+")]
+    | Min
+        +nodeList = (++) [(@label, "-")]
+    | Mul
+        +nodeList = (++) [(@label, "*")]
+    | Mod 
+        +nodeList = (++) [(@label, "%")]
+    | IsEqual
+        +nodeList = (++) [(@label, "==")]
+
+
+               
+{
+
+
+visualize p = trace ("nodes: " ++ show nodeList ++ ", edges: " ++ show edgeList ++ ", p: " ++ show p) $ graphviz' (mkGraph nodeList edgeList :: Gr String ())
+    where
+        nodeList = nodeList_Syn_Node . execute $ p
+        edgeList = edgeList_Syn_Node . execute $ p
+        
+
+        
+graphviz' g = let n = labNodes g
+                  e = labEdges g
+                  
+                  ns = concatMap sn n
+                  es = concatMap se e
+                  
+                  sn (l, a)     = show l ++ " [label=\"" ++ a ++ " (" ++ show l ++ ") \"];"
+                  se (l, l', a) = show l ++ " -> " ++ show l' ++ ";"
+                  
+              in "digraph AST {" ++ ns ++ es ++ "}"
+  
+        
+}

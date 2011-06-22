@@ -1,0 +1,7 @@
+#!/bin/bash
+cat input.php | sglri -p src/grammar/PHP5.tbl | typing_printer
+cat input.php | sglri -p src/grammar/PHP5.tbl | typing_debugger
+cat input.php | sglri -p src/grammar/PHP5.tbl | typing_visualizer | dot -Tpng > tree.png
+cat input.php | sglri -p src/grammar/PHP5.tbl | typing_inferencer
+
+#cat tree.dot | dot -Tpng > tree.png

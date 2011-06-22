@@ -1,0 +1,104 @@
+imports
+{
+import CCO.Printing as P hiding (render, join) 
+}
+
+-------------------------------------------------------------------------------
+-- Visualize the AST
+-------------------------------------------------------------------------------
+
+attr Node ParamList
+    syn pp use {>|<} {P.empty}:: {Doc}
+    
+    
+sem ParamList
+    | Cons 
+        lhs.pp = @hd.pp >|< text "," >|< @tl.pp
+    | Nil
+        lhs.pp = P.empty
+
+sem Node
+    | Document Sequence Assign Skip If While Variable ArrayAccess Simple Deci LTrue LFalse Return FunctionDecl Param FunctionCall FunctionName Expect String
+        lhs.pp = @loc.pp
+
+    | Document 
+        loc.pp = text "<?" >-< @stmt.pp >-< text "?>"
+
+    -- Sequence (lists in the grammar are converted to a sequence) 
+    | Sequence 
+        loc.pp = @f.pp >|< text ";" >-< @s.pp                   
+    | Skip
+        loc.pp = P.empty
+
+    -- Statements
+    | If 
+        loc.pp = text "if (" >|< @c.pp >|< text ") {" >-< indent 4 @l.pp >-< text "} else {" >-< indent 4 @r.pp >-< text "}"
+    | While
+        loc.pp = text "while (" >|< @c.pp >|< text ") {" >-< indent 4 @s.pp >-< text "}"
+    | Return
+        loc.pp = text "return " >|< @e.pp
+    | SimplifiedFunctionCall
+        loc.pp = case @result of 
+                    Just v  -> pp v >|< text " := " >|< text @name >|< text "(" >|< @params.pp >|< text ")"
+                    Nothing -> text ":: " >|< text @name >|< text "(" >|< @params.pp >|< text ")"
+        
+    -- Variables
+        
+    | Variable 
+        loc.pp = text "$" >|< @n.pp        
+    | ArrayAccess
+        loc.pp = @rv.pp >|< text "[" >|< @index.pp >|< text "]"
+    | Simple
+        loc.pp = text @value
+
+    -- Expressions
+    | String
+        loc.pp = text "\"" >|< text @value >|< text "\""
+    | Assign
+        loc.pp = @rv.pp >|< text " = " >|< @e.pp
+    --| LNumber
+      --  loc.pp = @ln.pp
+    | Deci
+        loc.pp = text $ show @value
+    | LTrue
+        loc.pp = text "true"
+    | LFalse 
+        loc.pp = text "false"
+    | Plus 
+        loc.pp = @l.pp >|< text " + " >|< @r.pp
+    | Min 
+        loc.pp = @l.pp >|< text " - " >|< @r.pp
+    | Mul
+        loc.pp = @l.pp >|< text " * " >|< @r.pp
+    | Mod 
+        loc.pp = @l.pp >|< text " % " >|< @r.pp
+        
+    | IsEqual
+        loc.pp = @l.pp >|< text " == " >|< @r.pp        
+    | Or
+        loc.pp = @l.pp >|< text " || " >|< @r.pp
+    | FunctionCall 
+        loc.pp = @name.pp >|< text "()"
+    | FunctionName
+        loc.pp = text @value
+        
+    -- Functions
+    
+    | FunctionDecl
+        loc.pp = text "function " >|< text @name >|< text "() {" >-< indent 4 @stmt.pp >-< text "}" 
+    | Param
+        loc.pp = @e.pp
+        
+    -- Debugging & Unit testing
+    | Expect
+        loc.pp = text "## Expect: " >|< @expr.pp >|< text " == " >|< text (show @ty)
+
+{
+
+render :: Doc -> String
+render = render_ 1000 
+
+instance Printable Node where
+    pp = pp_Syn_Node . execute
+
+}      

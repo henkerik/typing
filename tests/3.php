@@ -1,0 +1,8 @@
+<?php
+
+$a = 1;
+$b[1] = $a;
+
+check ($b, "[TyArray TyInt]");
+
+?>

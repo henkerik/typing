@@ -1,0 +1,27 @@
+-------------------------------------------------------------------------------
+-- Convert the "special" check functions to Expect nodes
+-------------------------------------------------------------------------------
+    
+attr Node ParamList OptionalString
+    syn annotated :: SELF
+    
+sem Node
+    | FunctionCall
+        lhs.annotated = case @name.copy of
+                            (FunctionName "check")   -> buildExpect @params.copy
+                            otherwise                -> @copy
+                           
+{
+
+buildExpect params = Expect expr (read $ "fromList" ++ value)
+    where
+        (Param expr)                     = params !! 0
+        (Param (DQContent (Some value))) = params !! 1
+        
+
+annotator :: Component Node Node
+annotator = component $ return . annotate
+
+annotate = annotated_Syn_Node . execute
+
+}

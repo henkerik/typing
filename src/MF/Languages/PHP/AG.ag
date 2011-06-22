@@ -1,0 +1,10 @@
+module {MF.Languages.PHP.AG}{}{}
+
+include "AG/Base.ag"
+include "AG/Flow.ag"
+include "AG/PP.ag"
+include "AG/Simplify.ag"
+include "AG/Visualizer.ag"
+include "AG/Typing.ag"
+include "AG/Checking.ag"
+include "AG/Debugging.ag"

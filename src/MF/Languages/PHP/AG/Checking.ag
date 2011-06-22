@@ -1,0 +1,158 @@
+imports
+{
+import CCO.Component
+import MF.Utils
+}
+
+-------------------------------------------------------------------------------
+-- Expected constraints
+-------------------------------------------------------------------------------
+
+{ 
+tyNum = S.fromList [TyInt, TyFloat] 
+}
+    
+attr Node
+    syn expected use {`S.union`} {S.empty} :: {Set Constraint}
+
+sem Node
+    | Expr Return Assign
+        loc.expected = @e.expected
+    | If While
+        loc.expected = S.fromList [(@c.label :==: S.singleton TyBool)] `S.union` @c.expected
+        lhs.expected = @loc.expected
+    | Mod
+        +expected    = S.union $ S.fromList [(@l.label :==: S.singleton TyInt), (@r.label :==: S.singleton TyInt)]
+    | Plus Min Mul
+        +expected    = S.union $ S.fromList [(@l.label :==: tyNum), (@r.label :==: tyNum)]
+    | Or 
+        +expected    = S.union $ S.fromList [(@l.label :==: S.singleton TyBool), (@r.label :==: S.singleton TyBool)]
+    | IsEqual 
+        +expected    = S.union $ S.singleton (@l.label :<=: @r.label)
+    | Deci
+        lhs.expected = S.singleton (@label :==: S.singleton TyInt)
+    | Expect
+        loc.expected = S.singleton (@expr.label :==: @ty) `S.union` @expr.expected
+
+-------------------------------------------------------------------------------
+-- Warnings
+-------------------------------------------------------------------------------
+
+sem Node
+    | Expr Return
+        loc.nodes = @e.nodes
+    | If While
+        loc.nodes = @c.nodes
+    | Expect
+        loc.nodes = @expr.nodes
+    
+
+
+attr Node
+    syn warnings use {`S.union`} {S.empty} :: {Set Warning}
+
+sem Node 
+    | FunctionDecl
+        lhs.warnings = S.empty
+    | Expr If While Expect Return 
+        lhs.warnings = S.map (toWarning @copy @loc.nodes @loc.constraints) (violatedConstraints  @loc.constraints @loc.expected)
+        
+        
+{            
+
+
+data Warning = Coercion Node Node TypeSet TypeSet
+             | UndefinedVariable Node Node TypeSet
+             | UnequalType Node Node Node TypeSet TypeSet
+             deriving (Eq, Ord, Show)
+             
+
+
+violatedConstraints :: Set Constraint -> Set Constraint -> Set Constraint
+violatedConstraints constraints expected = trace (show expected) $ S.filter isViolations . (fixPoint resolve) $ expected 
+    where
+        isViolations (l :==: expectedType) | not (resolvedType <: expectedType) = True
+                                           | resolvedType == S.empty            = True
+                                           | otherwise                          = False
+                                                                                where
+                                                                                    resolvedType = resolveType constraints l
+                                         
+        isViolations (l1 :<=: l2)          | resolveType constraints l1 <: resolveType constraints l2 = False
+                                           | otherwise                                                = True
+        
+        
+toWarning :: Node -> IntMap Node -> Set Constraint -> Constraint -> Warning
+toWarning stmt nodes constraints (l1 :<=: l2)                                    = trace "@@@ Unqualtype" $ UnequalType stmt (lookupNode l1 nodes) (lookupNode l2 nodes) (resolveType constraints l1) (resolveType constraints l2)
+toWarning stmt nodes constraints (l :==: expectedType) | resolvedType == S.empty = trace "@@@ Undefined"  $ UndefinedVariable stmt (lookupNode l nodes) expectedType
+                                                       | otherwise               = trace "@@@ Coercion"   $ Coercion stmt (lookupNode l nodes) expectedType resolvedType
+                                                                                 where
+                                                                                     resolvedType = resolveType constraints l
+
+lookupNode l nodes = case IM.lookup l nodes of 
+                         Just t  -> t
+                         Nothing -> error $ "Failed to lookup node: " ++ show l
+
+-------------------------------------------------------------------------------
+-- Checking
+-------------------------------------------------------------------------------
+     
+checker :: Component Node [Warning]
+checker = component $ return . check
+             
+check :: Node -> [Warning]
+check p = trace ("mappings: " ++ show mappings) $ concat . L.map S.toList . IM.elems $ mergeWith findWarnings nodes' mappings
+    where
+        solve = MF.Languages.PHP.AG.solve
+        -- ValueMap (Stack :-> Identifier :-> TypeSet) -> ValueMap (Identifier :-> TypeSet)
+        
+        -- mappings = IM.map (\value -> fromJust $ M.lookup [] value) $ MF.Languages.PHP.AG.solve p
+        mappings = IM.map (M.fold join M.empty) (solve p)
+        nodes'   = IM.map (\continuation -> toNode $ continuation id) (blocks p)
+        
+        -- blocks  = blocks_Syn_Node . execute $ p
+        --nodes = IM.map toNode blocks
+
+        findWarnings node mapping = trace ("finding warings for " ++ show node ++ " with " ++ show mapping) $ warnings_Syn_Node . execute $ node
+            where
+                execute node = wrap_Node (sem_Node node) (Inh_Node { labels_Inh_Node = 0, mapping_Inh_Node = mapping, simplifiedName_Inh_Node = []}) 
+                -- {
+                -- , d_Inh_Node = 0 })
+                
+
+-------------------------------------------------------------------------------
+-- Reporting
+-------------------------------------------------------------------------------
+
+reporter :: Component [Warning] Doc
+reporter = component $ return . report     
+             
+
+report :: [Warning] -> Doc
+report [] = text "OK" 
+report xs = text (show $ length xs) >|< text " warning(s) were found:" >-< above (L.map displayWarning xs)
+
+displayWarning (Coercion stmt node expected resolved) = 
+    text "Coercion: " >-< 
+        indent 4 (text "Expected: " >|< text (show expected)) >-< 
+        indent 4 (text "Found: " >|< text (show resolved)) >-<
+    text "In the expression: " >-< 
+        indent 4 (pp node) >-<
+    text "In the statement: " >-<
+        indent 4 (pp stmt)
+        
+displayWarning (UndefinedVariable stmt node expected) = 
+    text "UndefinedVariable: " >-< 
+        indent 4 (text "Expected: " >|< text (show expected)) >-<
+    text "In the expression: " >-< 
+        indent 4 (pp node) >-<
+    text "In the statement: " >-<
+        indent 4 (pp stmt)
+
+displayWarning (UnequalType stmt left right resolvedLeft resolvedRight) = 
+    text "UnequalType: " >-<
+        indent 4 (text "Found: " >|< text (show resolvedLeft) >|< text " for " >|< pp left) >-<
+        indent 4 (text "Found: " >|< text (show resolvedRight) >|< text " for " >|< pp right) >-<
+    text "In the statement: " >-<
+        indent 4 (pp stmt)
+        
+}

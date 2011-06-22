@@ -1,0 +1,3 @@
+#!/bin/bash
+pack-sdf -i PHP5.sdf -o PHP5.def
+sdf2table -i PHP5.def -o PHP5.tbl -m PHP5
