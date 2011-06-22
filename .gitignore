@@ -1,0 +1,12 @@
+# Ignore mac files
+.DS_Store
+
+# Ignore generated Haskell code
+src/MF/Languages/PHP/AG.hs
+
+# Ignore generated AST image
+tree.png
+
+# Ignore binaries
+dist
+dist/**/*

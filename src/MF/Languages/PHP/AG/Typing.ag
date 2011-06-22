@@ -118,11 +118,8 @@ solve = C.solve (lift transfer) (M.singleton [] M.empty) M.empty Forward
             where
                 returnValueToIdentifier node ReturnValue = Identifier $ toName node
         
-
         updateMapping :: Node -> Mapping -> Mapping
         updateMapping node mapping = mapping_Syn_Node . execute mapping $ node
---            where
-  --              execute node = wrap_Node (sem_Node node) (Inh_Node { labels_Inh_Node = 0, mapping_Inh_Node = mapping, simplifiedName_Inh_Node = Nothing})
                 
         removeParam :: Node -> Node   
         removeParam (Param expr) = expr 

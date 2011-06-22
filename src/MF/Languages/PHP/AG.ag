@@ -8,3 +8,16 @@ include "AG/Visualizer.ag"
 include "AG/Typing.ag"
 include "AG/Checking.ag"
 include "AG/Debugging.ag"
+
+{
+execute mapping p = wrap_Node (sem_Node p) inh
+    where
+        inh = Inh_Node 
+              { 
+                  labels_Inh_Node = 0,
+                  simplifiedName_Inh_Node = Nothing,
+                  mapping_Inh_Node = mapping,
+                  declarations'_Inh_Node = undefined,
+                  declaration_Inh_Node = undefined
+              }
+}
