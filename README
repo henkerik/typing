@@ -1,0 +1,30 @@
+## Soft Typing 4 PHP
+
+# Introduction
+
+This Experimentation Project (7.5 ECTS) was undertaken as part of my study Software Technology 
+at the University of Utrecht in May and June 2011. The goal of the project is to 
+statically infer types for every variable in a PHP program and to give suitable warnings 
+whenever a program is provably wrong. 
+
+This was realized by specifying the problem as a monotone framework instance and by solving
+the instance using a iterative work-list algorithm to find the maximal fixed point solution. 
+The theory behind monotone framework is described in Principles of Program Analysis by 
+Nielson, Nielson & Hankin. 
+
+During the execution of each transfer function constraints for the PHP expression at hand 
+are generated, and the type of an expression is found by resolving these constraints. 
+This idea was described by Camphuijsen in Soft typing and analyses on PHP programs 
+
+# Code organization
+
+
+# Compiling and running 
+
+To compile the program, simply type:
+
+$ make
+
+To analyze the file input.php, simply type:
+
+$ ./run
