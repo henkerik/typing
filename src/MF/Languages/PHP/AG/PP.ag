@@ -18,80 +18,80 @@ sem ParamList
         lhs.pp = P.empty
 
 sem Node
-    | Document Sequence Assign Skip If While Variable ArrayAccess Simple Deci LTrue LFalse Return FunctionDecl Param FunctionCall FunctionName Expect String
-        lhs.pp = @loc.pp
-
     | Document 
-        loc.pp = text "<?" >-< @stmt.pp >-< text "?>"
+        lhs.pp = text "<?" >-< @stmt.pp >-< text "?>"
 
-    -- Sequence (lists in the grammar are converted to a sequence) 
+    -- Sequence (lists in the grammar are converted to a sequence by Base.ag) 
     | Sequence 
-        loc.pp = @f.pp >|< text ";" >-< @s.pp                   
+        lhs.pp = @f.pp >|< text ";" >-< @s.pp                   
     | Skip
-        loc.pp = P.empty
+        lhs.pp = P.empty
 
     -- Statements
     | If 
-        loc.pp = text "if (" >|< @c.pp >|< text ") {" >-< indent 4 @l.pp >-< text "} else {" >-< indent 4 @r.pp >-< text "}"
+        lhs.pp = text "if (" >|< @c.pp >|< text ") {" >-< indent 4 @l.pp >-< text "} else {" >-< indent 4 @r.pp >-< text "}"
     | While
-        loc.pp = text "while (" >|< @c.pp >|< text ") {" >-< indent 4 @s.pp >-< text "}"
+        lhs.pp = text "while (" >|< @c.pp >|< text ") {" >-< indent 4 @s.pp >-< text "}"
     | Return
-        loc.pp = text "return " >|< @e.pp
+        lhs.pp = text "return " >|< @e.pp
     | SimplifiedFunctionCall
-        loc.pp = case @result of 
+        lhs.pp = case @result of 
                     Just v  -> pp v >|< text " := " >|< text @name >|< text "(" >|< @params.pp >|< text ")"
                     Nothing -> text ":: " >|< text @name >|< text "(" >|< @params.pp >|< text ")"
         
     -- Variables
-        
     | Variable 
-        loc.pp = text "$" >|< @n.pp        
+        lhs.pp = text "$" >|< @n.pp        
     | ArrayAccess
-        loc.pp = @rv.pp >|< text "[" >|< @index.pp >|< text "]"
+        lhs.pp = @rv.pp >|< text "[" >|< @index.pp >|< text "]"
     | Simple
-        loc.pp = text @value
+        lhs.pp = text @value
 
     -- Expressions
     | String
-        loc.pp = text "\"" >|< text @value >|< text "\""
+        lhs.pp = text "\"" >|< text @value >|< text "\""
     | Assign
-        loc.pp = @rv.pp >|< text " = " >|< @e.pp
-    --| LNumber
-      --  loc.pp = @ln.pp
+        lhs.pp = @rv.pp >|< text " = " >|< @e.pp
+    -- Arithmetic
     | Deci
-        loc.pp = text $ show @value
-    | LTrue
-        loc.pp = text "true"
-    | LFalse 
-        loc.pp = text "false"
+        lhs.pp = text $ show @value
     | Plus 
-        loc.pp = @l.pp >|< text " + " >|< @r.pp
+        lhs.pp = @l.pp >|< text " + " >|< @r.pp
     | Min 
-        loc.pp = @l.pp >|< text " - " >|< @r.pp
+        lhs.pp = @l.pp >|< text " - " >|< @r.pp
     | Mul
-        loc.pp = @l.pp >|< text " * " >|< @r.pp
+        lhs.pp = @l.pp >|< text " * " >|< @r.pp
     | Mod 
-        loc.pp = @l.pp >|< text " % " >|< @r.pp
-        
+        lhs.pp = @l.pp >|< text " % " >|< @r.pp
+    -- Compare
     | IsEqual
-        loc.pp = @l.pp >|< text " == " >|< @r.pp        
+        lhs.pp = @l.pp >|< text " == " >|< @r.pp        
+    -- Logical
+    | LTrue
+        lhs.pp = text "true"
+    | LFalse 
+        lhs.pp = text "false"
     | Or
-        loc.pp = @l.pp >|< text " || " >|< @r.pp
+        lhs.pp = @l.pp >|< text " || " >|< @r.pp
+        
+        
+    -- | Function call before simplification
     | FunctionCall 
-        loc.pp = @name.pp >|< text "()"
+        lhs.pp = @name.pp >|< text "()"
     | FunctionName
-        loc.pp = text @value
+        lhs.pp = text @value
+        
         
     -- Functions
-    
     | FunctionDecl
-        loc.pp = text "function " >|< text @name >|< text "() {" >-< indent 4 @stmt.pp >-< text "}" 
+        lhs.pp = text "function " >|< text @name >|< text "() {" >-< indent 4 @stmt.pp >-< text "}" 
     | Param
-        loc.pp = @e.pp
+        lhs.pp = @e.pp
+        
         
     -- Debugging & Unit testing
     | Expect
-        loc.pp = text "## Expect: " >|< @expr.pp >|< text " == " >|< text (show @ty)
+        lhs.pp = text "## Expect: " >|< @expr.pp >|< text " == " >|< text (show @ty)
 
 {
 
@@ -99,6 +99,6 @@ render :: Doc -> String
 render = render_ 1000 
 
 instance Printable Node where
-    pp = pp_Syn_Node . execute
+    pp = pp_Syn_Node . execute M.empty
 
 }      

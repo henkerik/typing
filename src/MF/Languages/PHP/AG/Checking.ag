@@ -46,8 +46,6 @@ sem Node
     | Expect
         loc.nodes = @expr.nodes
     
-
-
 attr Node
     syn warnings use {`S.union`} {S.empty} :: {Set Warning}
 
@@ -55,7 +53,7 @@ sem Node
     | FunctionDecl
         lhs.warnings = S.empty
     | Expr If While Expect Return 
-        lhs.warnings = S.map (toWarning @copy @loc.nodes @loc.constraints) (violatedConstraints  @loc.constraints @loc.expected)
+        lhs.warnings = S.map (toWarning @self @loc.nodes @loc.constraints) (violatedConstraints  @loc.constraints @loc.expected)
         
         
 {            
@@ -103,21 +101,14 @@ check :: Node -> [Warning]
 check p = trace ("mappings: " ++ show mappings) $ concat . L.map S.toList . IM.elems $ mergeWith findWarnings nodes' mappings
     where
         solve = MF.Languages.PHP.AG.solve
-        -- ValueMap (Stack :-> Identifier :-> TypeSet) -> ValueMap (Identifier :-> TypeSet)
-        
-        -- mappings = IM.map (\value -> fromJust $ M.lookup [] value) $ MF.Languages.PHP.AG.solve p
-        mappings = IM.map (M.fold join M.empty) (solve p)
-        nodes'   = IM.map (\continuation -> toNode $ continuation id) (blocks p)
-        
-        -- blocks  = blocks_Syn_Node . execute $ p
-        --nodes = IM.map toNode blocks
 
-        findWarnings node mapping = trace ("finding warings for " ++ show node ++ " with " ++ show mapping) $ warnings_Syn_Node . execute $ node
-            where
-                execute node = wrap_Node (sem_Node node) (Inh_Node { labels_Inh_Node = 0, mapping_Inh_Node = mapping, simplifiedName_Inh_Node = []}) 
-                -- {
-                -- , d_Inh_Node = 0 })
-                
+        -- Maybe it makes more sense to check each context individually, instead of folding
+        mappings = IM.map (M.fold join M.empty) (solve p)
+        nodes' = IM.map toNode (blocks p)
+        
+        findWarnings node mapping = trace ("finding warings for " ++ show node ++ " with " ++ show mapping) $ warnings_Syn_Node . execute mapping $ node
+--            where
+  --              execute node = wrap_Node (sem_Node node) (Inh_Node { labels_Inh_Node = 0, mapping_Inh_Node = mapping, simplifiedName_Inh_Node = Nothing}) 
 
 -------------------------------------------------------------------------------
 -- Reporting

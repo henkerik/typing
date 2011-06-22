@@ -35,7 +35,7 @@ attr Node OptionalString ParamList
 
 sem Node 
     | Expr 
-        lhs.removed = case @e.copy of 
+        lhs.removed = case @e.self of 
                           (Assign rv (FunctionCall (FunctionName name) params)) -> SimplifiedFunctionCall name params $ Just rv
                           (FunctionCall (FunctionName name) params)             -> SimplifiedFunctionCall name params Nothing
                           copy                                                  -> Expr copy
@@ -52,7 +52,7 @@ attr Node ParamList
 
 sem Node
     | FunctionCall
-        lhs.callMapping = IM.singleton @label @copy        
+        lhs.callMapping = IM.singleton @label @self        
 
 
 -- Function exstraction
@@ -82,14 +82,14 @@ attr Node OptionalString ParamList
 
 sem Node
     | Param
-        lhs.paramMapping = IM.singleton @label @e.copy
+        lhs.paramMapping = IM.singleton @label @e.self
 
 attr Node OptionalString ParamList
     syn exstractParameters :: SELF
 
 sem Node
     | SimplifiedFunctionCall
-        lhs.exstractParameters = exstractParameters @copy @params.paramMapping
+        lhs.exstractParameters = exstractParameters @self @params.paramMapping
 
     
 
@@ -129,12 +129,11 @@ exstractParameters node mapping = exstract build update node filtered
         
         
 
-simplify node = let a = simplified_Syn_Node . execute $ node
-                    b = removed_Syn_Node . execute $ a
-                    c = fixPoint (exstractFunctions_Syn_Node . execute) $ b
-                    d = exstractParameters_Syn_Node . execute $ c
-                    
-                in d -- . (removed_Syn_Node . execute) -- . (fixPoint (exstractFunctions_Syn_Node . execute)) . (simplified_Syn_Node . execute)
+simplify node = let a = simplified_Syn_Node . execute M.empty $ node
+                    b = removed_Syn_Node . execute M.empty $ a
+                    c = fixPoint (exstractFunctions_Syn_Node . execute M.empty) $ b
+                    d = exstractParameters_Syn_Node . execute M.empty $ c
+                in d
 
 
 simplifier :: Component Node Node

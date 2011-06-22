@@ -7,9 +7,9 @@ attr Node ParamList OptionalString
     
 sem Node
     | FunctionCall
-        lhs.annotated = case @name.copy of
-                            (FunctionName "check")   -> buildExpect @params.copy
-                            otherwise                -> @copy
+        lhs.annotated = case @name.self of
+                            (FunctionName "check")   -> buildExpect @params.self
+                            otherwise                -> @self
                            
 {
 
@@ -22,6 +22,6 @@ buildExpect params = Expect expr (read $ "fromList" ++ value)
 annotator :: Component Node Node
 annotator = component $ return . annotate
 
-annotate = annotated_Syn_Node . execute
+annotate = annotated_Syn_Node . execute M.empty
 
 }

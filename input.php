@@ -5,6 +5,6 @@ while (true) {
     $a[1] = $a;
 }
 
-check ($a, "[TyAny]");
+check ($a, "[TyArray (TyArray (TyArray (TyAny)))]");
 
 ?>

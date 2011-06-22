@@ -16,15 +16,13 @@ attr Node ParamList
     inh labels :: {Label}
     syn labels :: {Label}
 
-    syn label  :: {Label}  
---    syn label' :: {Label}
-
+    syn label  :: {Label}
   
-attr Node
+attr Node ParamList
     syn nodes use {`IM.union`} {IM.empty} :: {IntMap Node}
 
 sem Node
-    | If While Skip Assign Sequence Simple Deci Variable LTrue LFalse Plus Min Mul Mod ArrayAccess Return IsEqual Or Expect Return FunctionCall Param String Expr
+    | OpenTag CloseTag If While Skip Assign Sequence Simple Deci Variable LTrue LFalse Plus Min Mul Mod ArrayAccess Return IsEqual Or Expect Return FunctionCall Param String Expr DQContent FunctionName Literal
         loc.label :: uniqueref labels
         lhs.label = @loc.label
         +nodes    = IM.union $ IM.singleton @label @self
@@ -41,13 +39,18 @@ sem Node
         loc.la :: uniqueref labels  -- After
         +nodes    = IM.union $ IM.singleton @label @self
 
+sem ParamList
+    | Cons Nil
+        loc.label :: uniqueref labels
+        lhs.label = @loc.label
+
 
 -------------------------------------------------------------------------------
 -- Init
 -------------------------------------------------------------------------------
        
 attr Node
-  syn init :: {Maybe Label}
+  syn init use {<|>} {Nothing} :: {Maybe Label}
 
 sem Node
     | Document 
@@ -69,7 +72,7 @@ sem Node
 -------------------------------------------------------------------------------
 
 attr Node
-  syn final :: {Maybe [Label]}
+  syn final use {<|>} {Nothing} :: {Maybe [Label]}
 
 sem Node
     | Document 
@@ -86,12 +89,12 @@ sem Node
         lhs.final = @s.final
     | FunctionDecl
         lhs.final = Nothing
-        
+
+
                              
 -------------------------------------------------------------------------------
 -- Flow
 -------------------------------------------------------------------------------
-
 
 attr Node
   syn flow use {++} {[]} :: {Flow}
@@ -125,7 +128,7 @@ lookupDeclaration name declarations = case M.lookup name declarations of
 data Declaration = Declaration { functionName :: String, ln :: Label, lx :: Label }
 }
 
-attr Node 
+attr Node ParamList
     syn declarations use {`M.union`} {M.empty} :: {Map String Declaration}
     inh declarations'                          :: {Map String Declaration}
     
@@ -140,7 +143,7 @@ sem Node
         +declarations   = M.union $ M.singleton @name @loc.declaration
 
 -------------------------------------------------------------------------------
--- Transfer
+-- Blocks
 -------------------------------------------------------------------------------
         
 attr Node
@@ -158,63 +161,17 @@ sem Node
         +blocks = IM.union $ IM.fromList [(@ln, Entry @self)
                                  ,(@lx, Exit @self)]
 
--------------------------------------------------------------------------------
--- Blocks
--------------------------------------------------------------------------------
-
-
-attr Node OptionalString ParamList
-    syn copy :: SELF
-
-{-
-attr Node
-    syn blocks use {`IM.union`} {IM.empty} :: {IntMap (F.Block Node)}
-
-sem Node 
-    | Skip Expr If While Expect Return
-        +blocks = IM.union $ IM.singleton @label (F.Normal @copy)
-    | SimplifiedFunctionCall
-        +blocks = IM.union $ IM.fromList [(@lc, F.Call @copy), (@lr, F.Return @copy), (@lb, F.Normal Skip), (@la, F.Normal Skip)]
-    | FunctionDecl
-        +blocks = IM.union $ IM.fromList [(@ln, F.Entry @copy), (@lx, F.Exit @copy)]
--}        
-
-
--------------------------------------------------------------------------------
--- Nodes
--------------------------------------------------------------------------------
-{-
-attr Node 
-    syn nodes use {`IM.union`} {IM.empty} :: {IntMap Node}
-
-sem Node
-    | Expect 
-        loc.nodes = IM.singleton @label @expr.copy `IM.union` @expr.nodes
-    | Assign Return Expr
-        loc.nodes = IM.singleton @label @copy `IM.union` @e.nodes
-        lhs.nodes = @loc.nodes
-    | If While 
-        loc.nodes = @c.nodes
-    | Plus Variable Or
-        +nodes = IM.union $ IM.singleton @label @copy
--}      
-
 {
 
 nextUnique :: Int -> (Int, Int)
 nextUnique u = (u+1, u)
 
--- 'Execute' the AG, TODO: move to AG.ag
-execute p = wrap_Node (sem_Node p) inh
-    where
-        inh = Inh_Node { labels_Inh_Node = 0 }   
 
 -- Make Node an instance of Flowable, in this way it can be consumed by a monotome framework
 instance Flowable Node where
-    init     = fromJust . init_Syn_Node . execute
-    final    = fromJust . final_Syn_Node . execute
-    flow     = flow_Syn_Node . execute
-    nodes    = nodes_Syn_Node . execute
-    blocks   = IM.map (\block f -> f block) . blocks_Syn_Node . execute  
+    init     = fromJust . init_Syn_Node . execute M.empty
+    final    = fromJust . final_Syn_Node . execute M.empty
+    flow     = flow_Syn_Node . execute M.empty
+    blocks   = blocks_Syn_Node . execute M.empty
 
 }

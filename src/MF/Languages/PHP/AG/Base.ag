@@ -23,16 +23,9 @@ deriving OptionalString: Ord
 type ParamList = [Node]
 
 data Node
-    -- Root
+    -- Document
     | Document before :: {[Node]} open :: Node stmt :: Node close :: Node after :: {[Node]}
-    
-    -- Open
-    | ShortOpenTag
-    | FullOpenTag
-    | ASPOpenTag
-    
-    -- Close
-    | ASPCloseTag
+    | OpenTag
     | CloseTag
     
     -- InlineHTML
@@ -131,13 +124,13 @@ instance Tree Node where
                          app "Document"      (buildDocument <$> arg <*> arg <*> arg <*> arg <*> arg)
                          
                          --  Open
-                       , app "ShortOpenTag"  (pure ShortOpenTag)
-                       , app "FullOpenTag"   (pure FullOpenTag)
-                       , app "ASPOpenTag"    (pure ASPOpenTag)
+                       , app "ShortOpenTag"  (pure OpenTag)
+                       , app "FullOpenTag"   (pure OpenTag)
+                       , app "ASPOpenTag"    (pure OpenTag)
                        
                          -- Close
                        , app "CloseTag"      (pure CloseTag)
-                       , app "ASPCloseTag"   (pure ASPCloseTag)
+                       , app "ASPCloseTag"   (pure CloseTag)
                        
                          -- InlineHTML
                        , app "Literal"       (Literal <$> arg)

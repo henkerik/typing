@@ -3,46 +3,40 @@ imports
 import MF.Languages.PHP.Types
 
 import MF.Core as C
+import MF.Context
+
 import Data.IntMap as IM
-import Data.Set as S
-import Data.Map as M
+import Data.Set    as S
+import Data.Map    as M
+import Data.List   as L
 import Data.Maybe
+
 import qualified Debug.Trace as T
-import Data.List as L
+
+
 }
 
 -------------------------------------------------------------------------------
 -- Left most variable name and variable depth
 -------------------------------------------------------------------------------
+
 {
-
-data SimplifiedName = Name String
-                    | Nested SimplifiedName
-                    
-levels (Name _) = 0
-levels (Nested n) = levels n + 1
-
-name (Name n) = n
-name (Nested n) = name n
-
+levels (ArrayAccess rv index) = 1 + levels rv
+levels (Variable n)           = 0
+      
+name   (ArrayAccess rv index) = name rv
+name   (Variable n)           = name n
+name   (Simple value)         = value
 }
-attr Node 
-    inh simplifiedName  :: {[SimplifiedName -> SimplifiedName]}
-    syn simplifiedName' :: {SimplifiedName}
-
-sem Node 
-    | Document
-        stmt.simplifiedName = []
-    | ArrayAccess
-        lhs.simplifiedName' = @rv.simplifiedName'
-        rv.simplifiedName   = Nested : @lhs.simplifiedName
-    | Variable 
-        lhs.simplifiedName' = @n.simplifiedName'
-    | Simple
-        lhs.simplifiedName' = @loc.simplifiedName
-        loc.simplifiedName  = foldr ($) (Name @value) @lhs.simplifiedName 
   
-
+attr Node ParamList
+    inh simplifiedName :: {Maybe Node}
+    
+sem Node
+    | ArrayAccess
+        rv.simplifiedName = @lhs.simplifiedName <|> pure @self
+    | Variable
+        n.simplifiedName  = @lhs.simplifiedName <|> pure @self
 
 -------------------------------------------------------------------------------
 -- Constraints
@@ -72,7 +66,7 @@ sem Node
         +constraints    = S.union $ S.singleton (@label :<=: @rv.label)
     | Simple
         lhs.constraints = case M.lookup (Identifier @value) @lhs.mapping of 
-                              Just c  -> S.singleton (@label :==: fromArrayRepeatedly (levels @loc.simplifiedName) c)
+                              Just c  -> S.singleton (@label :==: fromArrayRepeatedly (levels (fromJust @lhs.simplifiedName)) c)
                               Nothing -> S.singleton (@label :==: S.empty)
     | Expect 
         loc.constraints = S.singleton (@label :<=: @expr.label) `S.union` @expr.constraints
@@ -81,15 +75,15 @@ sem Node
 -- Mapping
 -------------------------------------------------------------------------------
 
-attr Node 
+attr Node ParamList
     syn mapping :: {Mapping}
     inh mapping :: {Mapping}
     
 sem Node
     | Assign 
-        lhs.mapping = updateMapping (Identifier $ name @rv.simplifiedName') @e.label (levels @rv.simplifiedName') @constraints @e.mapping
+        lhs.mapping = updateMapping (Identifier $ name @rv.self) @e.label (levels @rv.self) @constraints @e.mapping
     | Return 
-        lhs.mapping = updateMapping ReturnValue                             @e.label 0                            @constraints @e.mapping
+        lhs.mapping = updateMapping ReturnValue                  @e.label 0                 @constraints @e.mapping
 
                                                
 -------------------------------------------------------------------------------
@@ -107,32 +101,28 @@ solve = C.solve (lift transfer) (M.singleton [] M.empty) M.empty Forward
         transfer (Normal (If c _ _ _ )) = updateMapping c
         transfer (Normal (While c _))   = updateMapping c
         transfer (Normal (Return e))    = updateMapping $ Return e
-        
         transfer (Call lc lr (SimplifiedFunctionCall name params result)) = M.mapKeys identifierToParameter . M.filterWithKey (flip $ const isParameter)
             where
                 isParameter (Identifier x) = x `elem` names
                 isParameter _              = False
                 identifierToParameter (Identifier x) = Parameter $ fromJust (elemIndex x names)
                 names = L.map (toName . removeParam) params                                             
-        
         transfer (Entry  (FunctionDecl name params _)) = M.mapKeys parameterToIdentifier 
             where
                 parameterToIdentifier (Parameter p) = Identifier $ (toName . removeParam) (params !! p)
-        
         transfer (Exit   (FunctionDecl name params _)) = M.filterWithKey (flip $ const isReturnValue)
             where
                 isReturnValue ReturnValue = True
                 isReturnValue _           = False
-        
         transfer (F.Return lc lr (SimplifiedFunctionCall name params result)) = maybe id (\node -> M.mapKeys (returnValueToIdentifier node)) result 
             where
                 returnValueToIdentifier node ReturnValue = Identifier $ toName node
         
 
         updateMapping :: Node -> Mapping -> Mapping
-        updateMapping node mapping = mapping_Syn_Node . execute $ node
-            where
-                execute node = wrap_Node (sem_Node node) (Inh_Node { labels_Inh_Node = 0, mapping_Inh_Node = mapping, simplifiedName_Inh_Node = []})
+        updateMapping node mapping = mapping_Syn_Node . execute mapping $ node
+--            where
+  --              execute node = wrap_Node (sem_Node node) (Inh_Node { labels_Inh_Node = 0, mapping_Inh_Node = mapping, simplifiedName_Inh_Node = Nothing})
                 
         removeParam :: Node -> Node   
         removeParam (Param expr) = expr 
