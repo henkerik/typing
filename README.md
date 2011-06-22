@@ -1,6 +1,6 @@
-## Soft Typing 4 PHP
+# Soft Typing 4 PHP
 
-# Introduction
+## Introduction
 
 This Experimentation Project (7.5 ECTS) was undertaken as part of my study Software Technology 
 at the University of Utrecht in May and June 2011. The goal of the project is to 
@@ -14,7 +14,7 @@ During the execution of each transfer function constraints for the PHP expressio
 and the type of an expression is found by resolving these constraints. This idea was described 
 by Camphuijsen in his thesis "Soft typing and analyses on PHP programs"
 
-# Code organization
+## Code organization
 
 The code base is clearly separated between the monotone framework and a generic work-list algorithm
 on one side and the framework instances on the other side. Beside soft typing, several other analyses were
@@ -29,20 +29,23 @@ considered as a post processing step.
 
 The following files and directories might be of special interest:
 
-src/MF/Core.hs                          Implements the work-list algorithm (look for the 'solve' function)
-src/MF/Languages/PHP/AG/Flow.ag         Implements the conversion of an AST to a flow graph
-src/MF/Languages/PHP/AG/Typing.ag       Implements the constraint generation, the transfer function and 
-                                        specifies an instance of the monotone framework
-src/MF/Languages/PHP/AG/Checking.ag     Implements the expected constraint generation and generates warnings
-                                        when the expected constraints don't match the types found by running
-                                        the work-list algorithm.
-src/MF/Language/While/                  Contains the implementation of the While language and several smaller 
-                                        analyses. Of these analyses, the detection of sign analysis is inter-
-                                        procedural. The While AST is currently implemented using a GADT.
-                                        
+| File or directory                      | Description                                                           |
+|:---------------------------------------|:----------------------------------------------------------------------|
+| src/MF/Core.hs                         | Implements the work-list algorithm (look for the 'solve' function)    |
+| src/MF/Languages/PHP/AG/Flow.ag        | Implements the conversion of an AST to a flow graph                   |
+| src/MF/Languages/PHP/AG/Typing.ag      | Implements the constraint generation, the transfer function and       |
+|                                        | specifies an instance of the monotone framework                       |
+| src/MF/Languages/PHP/AG/Checking.ag    | Implements the expected constraint generation and generates warnings  |
+|                                        | when the expected constraints don't match the types found by running  |
+|                                        | the work-list algorithm.                                              |
+| src/MF/Language/While/                 | Contains the implementation of the While language and several smaller |
+|                                        | analyses. Of these analyses, the detection of sign analysis is inter- |
+|                                        | procedural. The While AST is currently implemented using a GADT.      |
+
+
 (*) : Currently these analyses additional analyses don't compile due to recent changes in the Flowable class
 
-# Compiling and running 
+## Compiling and running 
 
 To compile the program, simply type:
 
