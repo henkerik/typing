@@ -24,8 +24,8 @@ These additional analyses all operate on the While language, a small imperative 
 The soft typing analyses contains two distinct phases. In the first phase an instance of the monotone
 framework is specified and solved. The result is a mapping between variable and type for any given 
 program point. In the second phase this result is used to check wether these types match the types 
-we expect. The second process doesn't specify or solve an monotone framework instance and could be 
-considered as a post processing step. 
+we expect. The second process doesn't specify or solve a monotone framework instance and could be 
+considered a post processing step. 
 
 The following files and directories might be of special interest:
 
@@ -41,7 +41,7 @@ The following files and directories might be of special interest:
 
 (*) : Currently these analyses additional analyses don't compile due to recent changes in the Flowable class
 
-## Compiling and running 
+## Compile, Run & Test
 
 To compile the program, simply type:
 
@@ -50,3 +50,7 @@ $ make
 To analyze the file input.php, simply type:
 
 $ ./run
+
+To run the testsuite, simply type:
+
+$ typing_tester
