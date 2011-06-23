@@ -82,7 +82,13 @@ exports
      'continue'     -> FunctionName {reject}
      'static'       -> FunctionName {reject}
      'unset'        -> FunctionName {reject}
-     'die'          -> FunctionName {reject}
+     'die'          -> FunctionName {reject}    
+     'function'     -> FunctionName {reject}
+     
+  %%Closures
+  sorts Expr
+  context-free syntax
+    'function' "(" {CallParam ","}* ")" "{" TopStatement* "}" -> Expr{cons("Closure")}
 
   %%Some more involved Expressions
   %%Operator expressions are in Operators.sdf

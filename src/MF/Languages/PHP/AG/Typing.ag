@@ -70,6 +70,27 @@ sem Node
                               Nothing -> S.singleton (@label :==: S.empty)
     | Expect 
         loc.constraints = S.singleton (@label :<=: @expr.label) `S.union` @expr.constraints
+    | Closure
+        lhs.constraints = S.singleton (@label :==: infer @params.self @stmt.self)
+        
+{
+
+-- In this approach we don't need any inter procedural analysis
+infer :: Node -> TypeSet
+infer params stmt = 
+    where
+        expected = IM.lookup $ init stmt $ calculateExpectedTypes stmt
+        mapping  = M.map update params 
+            where
+                update
+        returnType = M.lookup ReturnIdentifier $ IM.lookup $ final stmt $ calculateTypes stmt
+            
+calculateExpectedTypes :: Node -> ValueMap Mapping
+calculateExpectedTypes = C.solve transfer M.empty M.empty Backward 
+    where
+        
+
+}
                                                                   
 -------------------------------------------------------------------------------
 -- Mapping
