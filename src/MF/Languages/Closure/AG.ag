@@ -1,0 +1,10 @@
+module {MF.Languages.Closure.AG}{}{}
+
+include "AG/Base.ag"
+include "AG/Flow.ag"
+
+{
+execute attributes p = wrap_Stmt (sem_Stmt p) attributes
+    
+defaultAttributes = Inh_Stmt { labels_Inh_Stmt = 0 }
+}

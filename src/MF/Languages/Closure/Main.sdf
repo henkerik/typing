@@ -1,0 +1,45 @@
+module Main    
+exports
+    context-free start-symbols Program
+    
+    sorts Program
+    context-free syntax
+        "<?php" Stmt* "?>" -> Program {cons("Program")}
+
+    sorts Stmt
+    context-free syntax
+        Expr ";"                                                 -> Stmt {cons("Expr")}
+        'if' "(" Expr ")" "{" Stmt* "}" 'else' "{" Stmt* "}"     -> Stmt {cons("If")}
+        'while' "(" Expr ")" "{" Stmt* "}"                       -> Stmt {cons("While")}
+        'function' Identifier "(" {Variable ","}* ")" "{" Stmt* "}" -> Stmt {cons("Declaration")}
+        'return' Expr ";"                                        -> Stmt {cons("Return")}
+    
+    sorts Expr
+    context-free syntax
+        Identifier "(" {Expr ","}* ")" -> Expr {cons ("Call")}
+        "$" Identifier                 -> Expr {cons("Var")}
+        "$" Identifier "=" Expr        -> Expr {cons("Assign")}
+        Expr "+" Expr                  -> Expr {left, cons("Plus")}
+        Expr "-" Expr                  -> Expr {left, cons("Minus")}
+        Expr "==" Expr                 -> Expr {left, cons("Equal")}
+        Expr "%" Expr                  -> Expr {left, cons("Mod")}
+        Expr "*" Expr                  -> Expr {left, cons("Times")}
+        Bool                           -> Expr
+        Integer                        -> Expr {cons("Integer")}
+        
+    sorts Bool
+    context-free syntax
+        'true'  -> Bool {cons ("True")}
+        'false' -> Bool {cons ("False")}
+        
+            
+    sorts Identifier Integer Variable
+    lexical syntax 
+       [a-zA-Z]+      -> Identifier
+       [0-9]+         -> Integer
+       [\ \t\n]       -> LAYOUT
+       "$"[a-zA-Z]+ -> Variable
+       
+       
+    context-free syntax      
+        "if" | "else" | "while" | "function" | "return" | "true" | "false" -> Identifier {reject}

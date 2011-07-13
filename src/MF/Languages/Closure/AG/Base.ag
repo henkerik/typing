@@ -1,0 +1,99 @@
+imports {
+import           CCO.Tree             (ATerm (App), Tree (fromTree, toTree))
+import           CCO.Tree.Parser      (parseTree, app, arg, list, tuple)
+import           Control.Applicative  (Applicative ((<*>)), (<$>), pure)
+import           Prelude              hiding (sequence, init)
+import qualified Data.List as L
+}
+
+{
+type Variable = String
+type Function = String
+}
+
+data Identifier 
+    | Variable n :: Variable
+    | Function n :: Function
+    
+deriving Identifier: Show, Ord, Eq
+
+type ExprList = [Expr]
+
+data Program 
+    | Program s :: Stmt
+
+data Stmt 
+    | Expr e :: Expr
+    | If e :: Expr l :: Stmt r :: Stmt
+    | While e :: Expr s :: Stmt
+    | Declaration n :: Function params :: {[Variable]} s :: Stmt
+    | Return e :: Expr
+    | Sequence l :: Stmt r :: Stmt
+    | Skip
+
+deriving Stmt: Show
+
+data Expr 
+    | Assign n :: Variable e :: Expr
+    | Call n :: Identifier params :: ExprList
+    | Var n :: Variable
+    | Integer v :: Int
+    | LFalse
+    | LTrue
+
+deriving Expr: Show
+
+data Con 
+    | Bool v :: Bool
+    | Int v :: Int
+
+deriving Con: Show
+
+{
+
+sequence :: [Stmt] -> Stmt
+sequence []     = Skip
+sequence [x]    = x
+sequence xs     = foldr Sequence (last xs) (L.init xs)
+
+buildProgram                 stmts = sequence stmts
+buildWhile cond              stmts = While cond (sequence stmts)
+buildIf    cond left right         = If cond (sequence left) (sequence right)
+buildDeclaration name params stmts = Declaration name (L.map tail params) (sequence stmts)
+buildInteger value                 = Integer (read value)
+
+instance Tree Stmt where
+    fromTree = undefined
+    toTree = parseTree [ app "Expr"        (Expr <$> arg)
+                       , app "If"          (buildIf <$> arg <*> arg <*> arg)
+                       , app "While"       (buildWhile <$> arg <*> arg)
+                       , app "Declaration" (buildDeclaration <$> arg <*> arg <*> arg)
+                       , app "Return"      (Return <$> arg)
+                       , app "Program"     (buildProgram <$> arg)
+                       ]
+
+
+instance Tree Expr where
+    fromTree = undefined    
+    toTree = parseTree [ app "Assign"      (Assign <$> arg <*> arg)
+                       , app "Plus"        (buildPlus  <$> arg <*> arg)
+                       , app "Minus"       (buildMinus <$> arg <*> arg)
+                       , app "Equal"       (buildEqual <$> arg <*> arg)
+                       , app "Mod"         (buildMod   <$> arg <*> arg)
+                       , app "Times"       (buildTimes <$> arg <*> arg)
+                       , app "Var"         (Var <$> arg)
+                       , app "Integer"     (buildInteger <$> arg)
+                       , app "True"        (pure LTrue)
+                       , app "False"       (pure LFalse)
+                       , app "Call"        (buildCall <$> arg <*> arg)
+                       ]
+                       
+buildPlus  a b = Call (Function "+")  [a,b]
+buildMinus a b = Call (Function "-")  [a,b]
+buildEqual a b = Call (Function "==") [a,b]
+buildMod   a b = Call (Function "%")  [a,b]
+buildTimes a b = Call (Function "*")  [a,b]
+
+buildCall name params = Call (Function name) params
+
+}

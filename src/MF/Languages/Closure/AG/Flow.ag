@@ -1,0 +1,121 @@
+imports
+{
+import qualified MF.Flowable as F
+import MF.Flowable hiding (Return, Call)
+import Data.IntMap as IM
+import Data.Map as M
+import Data.Maybe
+import Control.Applicative hiding (Const)
+}
+
+-------------------------------------------------------------------------------
+-- Labels & Nodes
+-------------------------------------------------------------------------------
+
+attr Stmt
+    inh labels :: {Label}
+    syn labels :: {Label}
+
+    syn label  :: {Label}
+  
+
+sem Stmt
+    | Expr If While Skip Return Declaration
+        loc.label :: uniqueref labels
+        lhs.label = @loc.label
+
+-------------------------------------------------------------------------------
+-- Init
+-------------------------------------------------------------------------------
+       
+attr Stmt
+  syn init use {<|>} {Nothing} :: {Maybe Label}
+
+sem Stmt
+    | If While Skip Expr Return
+        lhs.init = Just @label
+    | Sequence 
+        lhs.init = @l.init <|> @r.init
+    | Declaration
+        lhs.init = Nothing
+        
+        
+-------------------------------------------------------------------------------
+-- Final
+-------------------------------------------------------------------------------
+
+attr Stmt
+  syn final use {<|>} {Nothing} :: {Maybe [Label]}
+
+sem Stmt
+    | Expr While Skip Return
+        lhs.final = Just [@label]
+    | Sequence 
+        lhs.final = @r.final <|> @l.final
+    | If 
+        lhs.final = pure (++) <*> @l.final <*> @r.final
+    | Declaration
+        lhs.final = Nothing
+
+
+                             
+-------------------------------------------------------------------------------
+-- Flow
+-------------------------------------------------------------------------------
+
+attr Stmt
+  syn flow use {++} {[]} :: {Flow}
+
+sem Stmt
+    | Sequence 
+        +flow = (++) $ if isNothing @r.init || isNothing @l.final then [] else [(l, fromJust @r.init) | l <- fromJust @l.final]
+    | If 
+        +flow = (++) $ [(@label, fromJust @l.init), (@label, fromJust @r.init)]
+    | While 
+        +flow = (++) $ [(@label, fromJust @s.init)] ++ [(l', @label) | l' <- fromJust @s.final]
+
+
+-------------------------------------------------------------------------------
+-- Function Declarations
+-------------------------------------------------------------------------------
+
+attr Stmt
+    syn declarations use {`M.union`} {M.empty} :: {Map String Stmt}
+    
+    
+sem Stmt
+    | Declaration
+        +declarations = M.union $ M.singleton @n @self
+
+-------------------------------------------------------------------------------
+-- Blocks
+-------------------------------------------------------------------------------
+        
+attr Stmt
+    syn blocks use {`IM.union`} {IM.empty} :: {IntMap (Block Stmt)}
+
+sem Stmt
+    | Skip Expr While If Return
+        +blocks = IM.union $ IM.singleton @label $ Normal @self
+    | Declaration
+        +blocks = IM.union $ IM.singleton @label $ Normal Skip
+
+{
+
+nextUnique :: Int -> (Int, Int)
+nextUnique u = (u+1, u)
+
+declarations = declarations_Syn_Stmt . execute defaultAttributes
+
+
+instance Flowable Stmt where
+    init   p  = case init_Syn_Stmt . execute defaultAttributes $ p of
+                    Just l  -> l
+                    Nothing -> -1
+    final   p = case final_Syn_Stmt . execute defaultAttributes $ p of
+                    Just l -> l
+                    Nothing -> []
+    flow     = flow_Syn_Stmt . execute defaultAttributes
+    blocks   = blocks_Syn_Stmt . execute defaultAttributes
+
+}
